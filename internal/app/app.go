@@ -7,15 +7,20 @@ import (
 	moderationRequestAdapter "ModerationService/internal/adapter/kafka/moderation_request"
 	"ModerationService/internal/config"
 	"ModerationService/internal/delivery/http/handler"
+	"ModerationService/internal/delivery/http/middleware"
 	"ModerationService/internal/delivery/http/transport"
 	moderationRequestSerivce "ModerationService/internal/service/moderation_request"
 	moderationRequestUsecase "ModerationService/internal/usecases/moderation_request"
 )
 
 func NewFiberApp(cfg *config.Config) *fiber.App {
-	return fiber.New(fiber.Config{
+	fiberApp := fiber.New(fiber.Config{
 		AppName: cfg.App.Name,
 	})
+
+	fiberApp.Use(middleware.RecoveryMiddleware())
+
+	return fiberApp
 }
 
 func NewApp() *fx.App {
