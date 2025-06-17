@@ -3,28 +3,42 @@ package transport
 import (
 	"context"
 	"log"
-	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"
+
+	"ModerationService/internal/delivery/http/handler"
 )
 
-func StartHttpServer(lc fx.Lifecycle, app *fiber.App) {
+type Handlers struct {
+	healthcheckHandler       *handler.HealthcheckHandler
+	moderationRequestHandler *handler.ModerationRequestHandler
+}
+
+func NewHandlers(
+	healthcheckHandler *handler.HealthcheckHandler,
+	moderationRequestHandler *handler.ModerationRequestHandler,
+) *Handlers {
+	return &Handlers{
+		healthcheckHandler:       healthcheckHandler,
+		moderationRequestHandler: moderationRequestHandler,
+	}
+}
+
+func StartHTTPServer(lc fx.Lifecycle, app *fiber.App, h *Handlers) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
-				RegisterRoutes(app)
+				RegisterRoutes(app, h)
 
-				log.Println("Server is running on :3000")
+				log.Println("HTTP server running on :3000")
 				if err := app.Listen(":3000"); err != nil {
-					log.Printf("Fiber error: %v", err)
-					os.Exit(1)
+					log.Fatalf("fiber error: %v", err)
 				}
 			}()
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			log.Println("Shutting down server...")
 			return app.Shutdown()
 		},
 	})
