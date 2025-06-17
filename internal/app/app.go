@@ -5,43 +5,48 @@ import (
 	"go.uber.org/fx"
 
 	moderationRequestAdapter "ModerationService/internal/adapter/kafka/moderation_request"
+	"ModerationService/internal/config"
 	"ModerationService/internal/delivery/http/handler"
 	"ModerationService/internal/delivery/http/transport"
 	moderationRequestSerivce "ModerationService/internal/service/moderation_request"
 	moderationRequestUsecase "ModerationService/internal/usecases/moderation_request"
 )
 
-func NewFiberApp() *fiber.App {
+func NewFiberApp(cfg *config.Config) *fiber.App {
 	return fiber.New(fiber.Config{
-		AppName: "ModerationService",
+		AppName: cfg.App.Name,
 	})
 }
 
 func NewApp() *fx.App {
+	providers := []interface{}{
+		config.NewConfig,
+		NewFiberApp,
+
+		fx.Annotate(
+			moderationRequestAdapter.NewModerationRequestAdapter,
+			fx.As(new(moderationRequestSerivce.ModerationRequestAdapter)),
+		),
+		fx.Annotate(
+			moderationRequestSerivce.NewModerationRequestService,
+			fx.As(new(moderationRequestUsecase.ModerationRequestService)),
+		),
+		fx.Annotate(
+			moderationRequestUsecase.NewModerationRequestUsecase,
+			fx.As(new(handler.ModerationRequestUsecase)),
+		),
+
+		handler.NewModerationRequestHandler,
+		handler.NewHealthcheck,
+		transport.NewHandlers,
+	}
+
+	invokes := []interface{}{
+		transport.StartHTTPServer,
+	}
+
 	return fx.New(
-		fx.Provide(
-			NewFiberApp,
-			fx.Annotate(
-				moderationRequestAdapter.NewModerationRequestAdapter,
-				fx.As(new(moderationRequestSerivce.ModerationRequestAdapter)),
-			),
-			fx.Annotate(
-				moderationRequestSerivce.NewModerationRequestService,
-				fx.As(new(moderationRequestUsecase.ModerationRequestService)),
-			),
-			fx.Annotate(
-				moderationRequestUsecase.NewModerationRequestUsecase,
-				fx.As(new(handler.ModerationRequestUsecase)),
-			),
-
-			handler.NewModerationRequestHandler,
-
-			handler.NewHealthcheck,
-
-			transport.NewHandlers,
-		),
-		fx.Invoke(
-			transport.StartHTTPServer,
-		),
+		fx.Provide(providers...),
+		fx.Invoke(invokes...),
 	)
 }

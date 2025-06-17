@@ -7,7 +7,7 @@ import (
 )
 
 type (
-	UseCase struct {
+	Usecase struct {
 		service ModerationRequestService
 	}
 
@@ -18,8 +18,8 @@ type (
 	}
 )
 
-func NewModerationRequestUsecase(service ModerationRequestService) *UseCase {
-	return &UseCase{
+func NewModerationRequestUsecase(service ModerationRequestService) *Usecase {
+	return &Usecase{
 		service: service,
 	}
 }
