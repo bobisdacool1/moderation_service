@@ -8,10 +8,24 @@ server:
   port: 3000
 
 kafka:
-  brokers:
-    - "localhost:9092"
-  topic: "moderation-requests"
-  group_id: "moderator-group"
+  broker: "localhost:9092"
+  topics:
+    - alias: "moderation-requests"
+      topic: "moderation-requests"
+      group_id: "moderator-group"
+      num_partitions: 1
+      replication_factor: 1
+    - alias: "moderation-requests-approved"
+      topic: "moderation-requests-approved"
+      group_id: "moderator-approved"
+      num_partitions: 1
+      replication_factor: 1
+    - alias: "moderation-requests-declined"
+      topic: "moderation-requests-declined"
+      group_id: "moderator-declined"
+      num_partitions: 1
+      replication_factor: 1
+
 
 logging:
   level: "debug"

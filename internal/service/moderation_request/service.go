@@ -2,14 +2,14 @@ package moderation_request
 
 import (
 	"context"
+	"fmt"
 
 	"ModerationService/internal/entity"
 )
 
 type (
 	ModerationRequestAdapter interface {
-		CreateModerationRequest(ctx context.Context, request *entity.ModerationRequest) error
-		UpdateModerationRequest(ctx context.Context, request *entity.ModerationRequest) error
+		WriteModerationRequest(ctx context.Context, request *entity.ModerationRequest) error
 		GetModerationRequest(ctx context.Context) (*entity.ModerationRequest, error)
 	}
 
@@ -25,10 +25,11 @@ func NewModerationRequestService(adapter ModerationRequestAdapter) *ModerationRe
 }
 
 func (s *ModerationRequestService) CreateModerationRequest(ctx context.Context, request *entity.ModerationRequest) error {
-	return nil
-}
+	err := s.adapter.WriteModerationRequest(ctx, request)
+	if err != nil {
+		return fmt.Errorf("create request service: %w", err)
+	}
 
-func (s *ModerationRequestService) ChangeModerationRequest(ctx context.Context, request *entity.ModerationRequest) error {
 	return nil
 }
 

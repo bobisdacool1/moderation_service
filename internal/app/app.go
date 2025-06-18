@@ -1,9 +1,12 @@
 package app
 
 import (
+	"context"
+
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"
 
+	kafkaadapter "ModerationService/internal/adapter/kafka"
 	moderationRequestAdapter "ModerationService/internal/adapter/kafka/moderation_request"
 	"ModerationService/internal/config"
 	"ModerationService/internal/delivery/http/handler"
@@ -27,7 +30,7 @@ func NewApp() *fx.App {
 	providers := []interface{}{
 		config.NewConfig,
 		NewFiberApp,
-
+		kafkaadapter.NewKafkaRepo,
 		fx.Annotate(
 			moderationRequestAdapter.NewModerationRequestAdapter,
 			fx.As(new(moderationRequestSerivce.ModerationRequestAdapter)),
@@ -47,6 +50,13 @@ func NewApp() *fx.App {
 	}
 
 	invokes := []interface{}{
+		func(lc fx.Lifecycle, k *kafkaadapter.KafkaRepo) {
+			lc.Append(fx.Hook{
+				OnStart: func(ctx context.Context) error {
+					return k.EnsureTopics(ctx)
+				},
+			})
+		},
 		transport.StartHTTPServer,
 	}
 

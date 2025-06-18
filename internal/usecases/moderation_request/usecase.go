@@ -13,7 +13,6 @@ type (
 
 	ModerationRequestService interface {
 		CreateModerationRequest(ctx context.Context, request *entity.ModerationRequest) error
-		ChangeModerationRequest(ctx context.Context, request *entity.ModerationRequest) error
 		GetModerationRequest(ctx context.Context) (*entity.ModerationRequest, error)
 	}
 )

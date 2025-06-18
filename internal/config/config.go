@@ -8,24 +8,31 @@ import (
 
 type (
 	Application struct {
-		Name    string
-		Version string
+		Name    string `yaml:"name"`
+		Version string `yaml:"version"`
 	}
 
 	Server struct {
-		Port int
+		Port int `yaml:"port"`
+	}
+
+	KafkaTopic struct {
+		Alias             string `yaml:"alias"`
+		Topic             string `yaml:"topic"`
+		NumPartitions     int    `yaml:"num_partitions"`
+		ReplicationFactor int    `yaml:"replication_factor"`
+		GroupID           string `yaml:"group_id"`
 	}
 
 	Kafka struct {
-		Brokers []string
-		Topic   string
-		GroupID string
+		Broker string       `yaml:"broker"`
+		Topics []KafkaTopic `yaml:"topics"`
 	}
 
 	Config struct {
-		App    Application
-		Server Server
-		Kafka  Kafka
+		App    Application `yaml:"app"`
+		Server Server      `yaml:"server"`
+		Kafka  Kafka       `yaml:"kafka"`
 	}
 )
 
