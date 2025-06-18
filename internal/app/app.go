@@ -7,12 +7,15 @@ import (
 	"go.uber.org/fx"
 
 	kafkaadapter "ModerationService/internal/adapter/kafka"
+	"ModerationService/internal/adapter/kafka/healthcheck"
 	moderationRequestAdapter "ModerationService/internal/adapter/kafka/moderation_request"
 	"ModerationService/internal/config"
 	"ModerationService/internal/delivery/http/handler"
 	"ModerationService/internal/delivery/http/middleware"
 	"ModerationService/internal/delivery/http/transport"
+	healthcheckservice "ModerationService/internal/service/healthcheck"
 	moderationRequestSerivce "ModerationService/internal/service/moderation_request"
+	healthcheckusecase "ModerationService/internal/usecases/healthcheck"
 	moderationRequestUsecase "ModerationService/internal/usecases/moderation_request"
 )
 
@@ -31,6 +34,7 @@ func NewApp() *fx.App {
 		config.NewConfig,
 		NewFiberApp,
 		kafkaadapter.NewKafkaRepo,
+
 		fx.Annotate(
 			moderationRequestAdapter.NewModerationRequestAdapter,
 			fx.As(new(moderationRequestSerivce.ModerationRequestAdapter)),
@@ -44,8 +48,21 @@ func NewApp() *fx.App {
 			fx.As(new(handler.ModerationRequestUsecase)),
 		),
 
+		fx.Annotate(
+			healthcheckadapter.NewHealthCheckAdapter,
+			fx.As(new(healthcheckservice.HealthcheckAdapter)),
+		),
+		fx.Annotate(
+			healthcheckservice.NewHealthcheckService,
+			fx.As(new(healthcheckusecase.HealthcheckService)),
+		),
+		fx.Annotate(
+			healthcheckusecase.NewHealthcheckUsecase,
+			fx.As(new(handler.HealthcheckUsecase)),
+		),
+
 		handler.NewModerationRequestHandler,
-		handler.NewHealthcheck,
+		handler.NewHealthcheckHandler,
 		transport.NewHandlers,
 	}
 
