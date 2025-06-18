@@ -1,20 +1,13 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type (
-	HealthcheckHandler struct {
-		healthcheckAdapter HealthcheckAdapter
-	}
-
-	HealthcheckAdapter interface {
-		Ping(ctx context.Context) error
-	}
+	HealthcheckHandler struct{}
 )
 
 func NewHealthcheck() *HealthcheckHandler {
