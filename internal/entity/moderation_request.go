@@ -17,5 +17,5 @@ type (
 const (
 	StatusPending  Status = "pending"
 	StatusApproved Status = "approved"
-	StatusRejected Status = "rejected"
+	StatusDeclined Status = "declined"
 )
