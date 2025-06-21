@@ -26,6 +26,8 @@ kafka:
       num_partitions: 1
       replication_factor: 1
 
+in_mem:
+  ttl: "300s"
+  cleanup_interval: "5s"
+  limit: 1000
 
-logging:
-  level: "debug"

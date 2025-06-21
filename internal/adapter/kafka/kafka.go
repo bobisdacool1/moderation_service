@@ -11,7 +11,7 @@ import (
 type (
 	Topic string
 
-	KafkaRepo struct {
+	KafkaClient struct {
 		writers map[string]*kafka.Writer
 		readers map[string]*kafka.Reader
 
@@ -19,7 +19,7 @@ type (
 	}
 )
 
-func (k *KafkaRepo) GetTopicByAlias(alias string) (Topic, error) {
+func (k *KafkaClient) GetTopicByAlias(alias string) (Topic, error) {
 	for _, t := range k.kafkaCfg.Topics {
 		if t.Alias == alias {
 			return Topic(t.Topic), nil

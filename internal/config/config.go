@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -29,10 +30,17 @@ type (
 		Topics []KafkaTopic `yaml:"topics"`
 	}
 
+	InMemConfig struct {
+		TTL             time.Duration `yaml:"ttl"`
+		CleanupInterval time.Duration `yaml:"cleanup_interval"`
+		Limit           int           `yaml:"limit"`
+	}
+
 	Config struct {
 		App    Application `yaml:"app"`
 		Server Server      `yaml:"server"`
 		Kafka  Kafka       `yaml:"kafka"`
+		InMem  InMemConfig `yaml:"in_mem"`
 	}
 )
 

@@ -8,11 +8,11 @@ import (
 
 type (
 	Adapter struct {
-		kafkaRepo *kafkaadapter.KafkaRepo
+		kafkaRepo *kafkaadapter.KafkaClient
 	}
 )
 
-func NewHealthCheckAdapter(kafkaRepo *kafkaadapter.KafkaRepo) *Adapter {
+func NewHealthCheckAdapter(kafkaRepo *kafkaadapter.KafkaClient) *Adapter {
 	return &Adapter{
 		kafkaRepo: kafkaRepo,
 	}

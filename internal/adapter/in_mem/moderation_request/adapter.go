@@ -2,11 +2,14 @@ package inmemadapter
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/segmentio/kafka-go"
+
+	"ModerationService/internal/config"
+	"ModerationService/internal/entity"
 )
 
 type (
@@ -21,22 +24,23 @@ type (
 		startOnce sync.Once
 		stopOnce  sync.Once
 		cancel    context.CancelFunc
+		wg        sync.WaitGroup
 	}
 
 	CachedMessage struct {
-		Message   kafka.Message
+		Message   *kafka.Message
 		Timestamp time.Time
 	}
 )
 
 var (
-	errLimitExceeded       = errors.New("limit exceeded")
-	errDurationBelowZero   = errors.New("time.Duration must be > 0")
-	errMessageAlreadyInUse = errors.New("message already in use")
+	errLimitExceeded       = fmt.Errorf("limit exceeded")
+	errDurationBelowZero   = fmt.Errorf("time.Duration must be > 0")
+	errMessageAlreadyInUse = fmt.Errorf("message already in use")
 )
 
-func NewModerationRequestAdapter(ttl time.Duration, cleanupInterval time.Duration) (*Adapter, error) {
-	if ttl <= 0 || cleanupInterval <= 0 {
+func NewInMemModerationRequestAdapter(cfg *config.Config) (*Adapter, error) {
+	if cfg.InMem.TTL <= 0 || cfg.InMem.CleanupInterval <= 0 || cfg.InMem.Limit <= 0 {
 
 		return nil, errDurationBelowZero
 	}
@@ -44,45 +48,48 @@ func NewModerationRequestAdapter(ttl time.Duration, cleanupInterval time.Duratio
 	a := &Adapter{
 		messagesByID:    make(map[string]CachedMessage),
 		mu:              sync.RWMutex{},
-		ttl:             ttl,
-		cleanupInterval: cleanupInterval,
+		ttl:             cfg.InMem.TTL,
+		cleanupInterval: cfg.InMem.CleanupInterval,
+		limit:           cfg.InMem.Limit,
 	}
 
 	return a, nil
 }
 
-func (a *Adapter) Put(ctx context.Context, id string, message kafka.Message) error {
+func (a *Adapter) Put(ctx context.Context, id string, message entity.KafkaMessageEnvelope) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+
+	rawMessage := entity.KafkaEnvelopeToMessage(message)
 
 	if a.limit > 0 && len(a.messagesByID) >= a.limit {
 		return errLimitExceeded
 	}
 
 	if _, ok := a.messagesByID[id]; ok {
-		if !shouldPut(a.messagesByID[id], message) {
+		if !shouldPut(a.messagesByID[id], rawMessage) {
 			return errMessageAlreadyInUse
 		}
 	}
 
 	t := time.Now()
 	a.messagesByID[id] = CachedMessage{
-		Message:   message,
+		Message:   &rawMessage,
 		Timestamp: t,
 	}
 
 	return nil
 }
 
-func (a *Adapter) Get(ctx context.Context, id string) (kafka.Message, bool) {
+func (a *Adapter) Get(ctx context.Context, id string) (entity.KafkaMessageEnvelope, bool) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
 	if v, ok := a.messagesByID[id]; ok {
-		return v.Message, true
+		return entity.KafkaMessageToEnvelope(*v.Message), true
 	}
 
-	return kafka.Message{}, false
+	return entity.KafkaMessageEnvelope{}, false
 }
 
 func (a *Adapter) Delete(ctx context.Context, id string) {
@@ -99,6 +106,7 @@ func (a *Adapter) Start(ctx context.Context) {
 		childCtx, cancel := context.WithCancel(ctx)
 		a.cancel = cancel
 
+		a.wg.Add(1)
 		go a.runCleanupLoop(childCtx)
 	})
 }
@@ -107,11 +115,15 @@ func (a *Adapter) Stop() {
 	a.stopOnce.Do(func() {
 		if a.cancel != nil {
 			a.cancel()
+			a.wg.Wait()
 		}
 	})
 }
 
 func shouldPut(stored CachedMessage, new kafka.Message) bool {
+	if stored.Message == nil {
+		return true
+	}
 	return stored.Message.Offset <= new.Offset &&
 		stored.Message.Partition == new.Partition &&
 		stored.Message.Topic == new.Topic
@@ -136,15 +148,18 @@ func (a *Adapter) cleanup() {
 }
 
 func (a *Adapter) runCleanupLoop(ctx context.Context) {
-	var loop func()
-	loop = func() {
-		if ctx.Err() != nil {
+	defer a.wg.Done()
+
+	timer := time.NewTimer(a.cleanupInterval)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
 			return
+		case <-timer.C:
+			a.cleanup()
+			timer.Reset(a.cleanupInterval)
 		}
-
-		a.cleanup()
-		time.AfterFunc(a.cleanupInterval, loop)
 	}
-
-	loop()
 }

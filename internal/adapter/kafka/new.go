@@ -9,12 +9,12 @@ import (
 	"ModerationService/internal/config"
 )
 
-func NewKafkaRepo(cfg *config.Config) (*KafkaRepo, error) {
+func NewKafkaClient(cfg *config.Config) (*KafkaClient, error) {
 	if len(cfg.Kafka.Broker) == 0 {
 		return nil, fmt.Errorf("no kafka broker provided")
 	}
 
-	k := &KafkaRepo{
+	k := &KafkaClient{
 		writers: make(map[string]*kafka.Writer),
 		readers: make(map[string]*kafka.Reader),
 
@@ -45,7 +45,7 @@ func NewKafkaRepo(cfg *config.Config) (*KafkaRepo, error) {
 	return k, nil
 }
 
-func (k *KafkaRepo) Close() error {
+func (k *KafkaClient) Close() error {
 	var err error
 	for _, r := range k.readers {
 		err = r.Close()
@@ -56,7 +56,7 @@ func (k *KafkaRepo) Close() error {
 	return err
 }
 
-func (k *KafkaRepo) EnsureTopics(ctx context.Context) error {
+func (k *KafkaClient) EnsureTopics(ctx context.Context) error {
 	conn, err := kafka.DialContext(ctx, "tcp", k.kafkaCfg.Broker)
 	if err != nil {
 		return fmt.Errorf("failed to connect to Kafka broker: %w", err)
