@@ -33,7 +33,7 @@ func (u *Usecase) ApproveModerationRequest(ctx context.Context, id string) error
 		return fmt.Errorf("failed to release moderation request: %w", err)
 	}
 
-	moderationRequest.Status = "approved"
+	moderationRequest.Status = entity.StatusApproved
 
 	err = u.service.CreateApprovedRequest(ctx, moderationRequest)
 	if err != nil {
@@ -49,7 +49,7 @@ func (u *Usecase) DeclineModerationRequest(ctx context.Context, id string) error
 		return fmt.Errorf("failed to release moderation request: %w", err)
 	}
 
-	moderationRequest.Status = "declined"
+	moderationRequest.Status = entity.StatusDeclined
 
 	err = u.service.CreateDeclinedRequest(ctx, moderationRequest)
 	if err != nil {
