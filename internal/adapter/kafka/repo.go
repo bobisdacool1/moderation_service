@@ -8,35 +8,42 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-func (k *KafkaRepo) WriteMessage(ctx context.Context, topic string, key, value []byte) error {
-	writer, ok := k.writers[topic]
+func (k *KafkaClient) WriteMessage(ctx context.Context, topic Topic, key, value []byte) (kafka.Message, error) {
+	writer, ok := k.writers[topic.String()]
 	if !ok {
-		return fmt.Errorf("no writer for topic: %s", topic)
+		return kafka.Message{}, fmt.Errorf("no writer for topic: %s", topic)
 	}
-	return writer.WriteMessages(ctx, kafka.Message{
+
+	msg := kafka.Message{
 		Key:   key,
 		Value: value,
 		Time:  time.Now(),
-	})
+	}
+	err := writer.WriteMessages(ctx, msg)
+	if err != nil {
+		return kafka.Message{}, fmt.Errorf("failed to write message: %w", err)
+	}
+
+	return msg, nil
 }
 
-func (k *KafkaRepo) ReadMessage(ctx context.Context, topic string) (kafka.Message, error) {
-	reader, ok := k.readers[topic]
+func (k *KafkaClient) ReadMessage(ctx context.Context, topic Topic) (kafka.Message, error) {
+	reader, ok := k.readers[topic.String()]
 	if !ok {
 		return kafka.Message{}, fmt.Errorf("no reader for topic: %s", topic)
 	}
 	return reader.FetchMessage(ctx)
 }
 
-func (k *KafkaRepo) CommitMessage(ctx context.Context, topic string, msg kafka.Message) error {
-	reader, ok := k.readers[topic]
+func (k *KafkaClient) CommitMessage(ctx context.Context, topic Topic, msg kafka.Message) error {
+	reader, ok := k.readers[topic.String()]
 	if !ok {
 		return fmt.Errorf("no reader for topic: %s", topic)
 	}
 	return reader.CommitMessages(ctx, msg)
 }
 
-func (k *KafkaRepo) Ping(ctx context.Context) error {
+func (k *KafkaClient) Ping(ctx context.Context) error {
 	conn, err := kafka.DialContext(ctx, "tcp", k.kafkaCfg.Broker)
 	if err != nil {
 		return fmt.Errorf("kafka ping failed: %w", err)

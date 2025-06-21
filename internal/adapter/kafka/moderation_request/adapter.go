@@ -11,13 +11,24 @@ import (
 
 type (
 	Adapter struct {
-		kafkaRepo               *kafkaadapter.KafkaRepo
+		kafkaRepo *kafkaadapter.KafkaClient
+
 		moderationRequestsTopic kafkaadapter.Topic
+		approvedRequestsTopic   kafkaadapter.Topic
+		declinedRequestsTopic   kafkaadapter.Topic
 	}
 )
 
-func NewModerationRequestAdapter(kafkaRepo *kafkaadapter.KafkaRepo) *Adapter {
+func NewModerationRequestAdapter(kafkaRepo *kafkaadapter.KafkaClient) *Adapter {
 	moderationRequestTopic, err := kafkaRepo.GetTopicByAlias("moderation-requests")
+	if err != nil {
+		panic(err)
+	}
+	approvedRequestTopic, err := kafkaRepo.GetTopicByAlias("moderation-requests-approved")
+	if err != nil {
+		panic(err)
+	}
+	declinedRequestTopic, err := kafkaRepo.GetTopicByAlias("moderation-requests-declined")
 	if err != nil {
 		panic(err)
 	}
@@ -25,42 +36,29 @@ func NewModerationRequestAdapter(kafkaRepo *kafkaadapter.KafkaRepo) *Adapter {
 	return &Adapter{
 		kafkaRepo:               kafkaRepo,
 		moderationRequestsTopic: moderationRequestTopic,
+		approvedRequestsTopic:   approvedRequestTopic,
+		declinedRequestsTopic:   declinedRequestTopic,
 	}
 }
 
-func (a *Adapter) WriteModerationRequest(ctx context.Context, request *entity.ModerationRequest) error {
-	bb, err := json.Marshal(request)
+func (a *Adapter) writeEntity(ctx context.Context, topic kafkaadapter.Topic, data any, id string) (entity.KafkaMessageEnvelope, error) {
+	bb, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("failed to marshal moderation request: %w", err)
+		return entity.KafkaMessageEnvelope{}, fmt.Errorf("failed to marshal moderation request: %w", err)
 	}
 
-	err = a.kafkaRepo.WriteMessage(ctx, a.moderationRequestsTopic.String(), a.getKey(request), bb)
+	msg, err := a.kafkaRepo.WriteMessage(ctx, topic, getKey(topic, id), bb)
 	if err != nil {
-		return fmt.Errorf("failed to write moderation request: %w", err)
+		return entity.KafkaMessageEnvelope{}, fmt.Errorf("failed to write moderation request: %w", err)
 	}
 
-	return nil
+	return entity.KafkaMessageToEnvelope(msg), nil
 }
 
-func (a *Adapter) GetModerationRequest(ctx context.Context) (*entity.ModerationRequest, error) {
-	e, err := a.kafkaRepo.ReadMessage(ctx, a.moderationRequestsTopic.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to read moderation request: %w", err)
-	}
-
-	var request entity.ModerationRequest
-	err = json.Unmarshal(e.Value, &request)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal moderation request: %w", err)
-	}
-
-	return &request, nil
+func getKey(topic kafkaadapter.Topic, id string) []byte {
+	return []byte(getEntityPrefix(topic) + id)
 }
 
-func (a *Adapter) getKey(request *entity.ModerationRequest) []byte {
-	return []byte(a.getEntityPrefix() + request.ID)
-}
-
-func (a *Adapter) getEntityPrefix() string {
-	return a.moderationRequestsTopic.String() + ":"
+func getEntityPrefix(topic kafkaadapter.Topic) string {
+	return topic.String() + ":"
 }
